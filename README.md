@@ -1,4 +1,6 @@
-https://docs.vortex.dev/getting-started/query - docs
+https://docs.vortex.dev/api/java/ - docs
+
+https://docs.vortex.dev/_static/vortex-jni/ - api
 
 https://github.com/vortex-data/vortex/issues/1228 - Iceberg + Vortex
 
