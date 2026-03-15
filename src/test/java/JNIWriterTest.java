@@ -9,21 +9,22 @@ import dev.vortex.api.VortexWriter;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import dev.vortex.jni.NativeLoader;
 import org.apache.arrow.memory.RootAllocator;
+import org.apache.arrow.vector.DecimalVector;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 import org.apache.arrow.vector.types.pojo.*;
 import org.apache.arrow.vector.VarCharVector;
-import org.apache.arrow.vector.IntVector;
 import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.ipc.ArrowStreamWriter;
 import org.apache.arrow.vector.types.pojo.*;
@@ -40,46 +41,79 @@ public final class JNIWriterTest {
         NativeLoader.loadJni();
     }
 
-
-
     public static byte[] createArrowBatch() throws Exception {
 
         try (RootAllocator allocator = new RootAllocator()) {
 
-            // Arrow schema
+            // 1) Определяем поля
             Field nameField = new Field(
-                    "name",
+                    "Name",
                     FieldType.nullable(new ArrowType.Utf8()),
-                    null);
+                    null
+            );
 
-            Field ageField = new Field(
-                    "age",
-                    FieldType.nullable(new ArrowType.Int(32, true)),
-                    null);
+            Field salaryField = new Field(
+                    "Salary",
+                    FieldType.nullable(new ArrowType.Decimal(10, 2)),
+                    null
+            );
 
-            Schema schema = new Schema(Arrays.asList(nameField, ageField));
+            Field stateField = new Field(
+                    "State",
+                    FieldType.nullable(new ArrowType.Utf8()),
+                    null
+            );
 
+            Schema schema = new Schema(Arrays.asList(nameField, salaryField, stateField));
+
+            // 2) Создаем VectorSchemaRoot
             try (VectorSchemaRoot root = VectorSchemaRoot.create(schema, allocator)) {
 
-                VarCharVector name = (VarCharVector) root.getVector("name");
-                IntVector age = (IntVector) root.getVector("age");
+                VarCharVector name = (VarCharVector) root.getVector("Name");
+                DecimalVector salary = (DecimalVector) root.getVector("Salary");
+                VarCharVector state = (VarCharVector) root.getVector("State");
 
                 name.allocateNew();
-                age.allocateNew();
+                salary.allocateNew();
+                state.allocateNew();
 
-                // данные
-                name.setSafe(0, "Alice".getBytes(StandardCharsets.UTF_8));
-                age.setSafe(0, 25);
+                // 3) Данные
+                List<String> names = Arrays.asList(
+                        "Alice", "Bob", "Carol", "Dan", "Edward",
+                        "Frida", "George", "Henry", "Ida", "John"
+                );
 
-                name.setSafe(1, "Bob".getBytes(StandardCharsets.UTF_8));
-                age.setSafe(1, 30);
+                List<BigDecimal> salaries = Arrays.asList(
+                        new BigDecimal("10.00"),
+                        new BigDecimal("20.00"),
+                        new BigDecimal("30.00"),
+                        new BigDecimal("40.00"),
+                        new BigDecimal("50.00"),
+                        new BigDecimal("60.00"),
+                        new BigDecimal("70.00"),
+                        new BigDecimal("80.00"),
+                        new BigDecimal("90.00"),
+                        new BigDecimal("100.00")
+                );
 
-                name.setValueCount(2);
-                age.setValueCount(2);
-                root.setRowCount(2);
+                List<String> states = Arrays.asList(
+                        "CA", "NY", "TX", "CA", "NY",
+                        "TX", "CA", "NY", "TX", "VA"
+                );
 
+                for (int i = 0; i < names.size(); i++) {
+                    name.setSafe(i, names.get(i).getBytes(StandardCharsets.UTF_8));
+                    salary.setSafe(i, salaries.get(i));
+                    state.setSafe(i, states.get(i).getBytes(StandardCharsets.UTF_8));
+                }
+
+                name.setValueCount(names.size());
+                salary.setValueCount(names.size());
+                state.setValueCount(names.size());
+                root.setRowCount(names.size());
+
+                // 4) Сериализуем в Arrow IPC
                 ByteArrayOutputStream out = new ByteArrayOutputStream();
-
                 try (ArrowStreamWriter writer = new ArrowStreamWriter(root, null, out)) {
                     writer.start();
                     writer.writeBatch();
@@ -91,7 +125,6 @@ public final class JNIWriterTest {
         }
     }
 
-
     @Test
     public void testCreateWriter() throws IOException {
         // Test just creating and closing a writer
@@ -101,9 +134,9 @@ public final class JNIWriterTest {
         // Make a new file writer with a very simple schema.
         var writeSchema = DType.newStruct(
                 new String[] {
-                    "name", "age",
+                    "Name", "Salary", "State"
                 },
-                new DType[] {DType.newUtf8(true), DType.newInt(true)},
+                new DType[] {DType.newUtf8(true), DType.newDecimal(10, 2, true), DType.newUtf8(true)},
                 false);
 
         // Minimal Arrow schema

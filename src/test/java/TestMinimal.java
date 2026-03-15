@@ -55,7 +55,7 @@ public final class TestMinimal {
     }
 
     private static final String MINIMAL_PATH =
-            TestMinimal.class.getResource("/minimal.vortex").getPath();
+            System.getProperty("java.io.tmpdir") + "/test_create.vortex";
 
     // data representing the complete `minimal` test table:
     /// =======================
