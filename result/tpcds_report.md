@@ -47,12 +47,12 @@ CREATE TABLE <name> (<tpcds_columns>) WITH (
 - `FETCH NEXT 100 ROWS ONLY` на результат
 
 ### Оптимизатор Flink
-Критичные настройки (без которых половина запросов collapse-ает в parallelism=1):
+Критичные настройки
 ```java
 table.optimizer.multiple-input-enabled = false
 table.optimizer.join-reorder-enabled = true
 ```
-`multiple-input=false` лечит patternный коллапс при `ORDER BY … FETCH N` + ROLLUP/GROUPING SETS.
+`multiple-input=false`  защита от limit-collapse pattern
 
 ### Прогоны
 - **2 независимых trial** (`run1.csv`, `run2.csv` → `tpcds1.csv`, `tpcds2.csv`)
